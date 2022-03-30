@@ -4,6 +4,7 @@ from django.urls import reverse
 
 from posts.models import User, Group, Post
 
+
 class PostURLTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -40,12 +41,12 @@ class PostURLTests(TestCase):
             data=form_data,
             follow=True
         )
-        # Проверим, что после создания формы происходит 
+        # Проверим, что после создания формы происходит
         # перенаправляете на страницу автора
         self.assertRedirects(response, reverse(
-            ('posts:profile'),kwargs={'username': self.user})
+            ('posts:profile'), kwargs={'username': self.user})
         )
-        # Проверим, что пост создался, через увеличение 
+        # Проверим, что пост создался, через увеличение
         # количества постов
         self.assertEqual(Post.objects.count(), post_count+1)
         # Проверим, что пост создался корректно
@@ -54,4 +55,4 @@ class PostURLTests(TestCase):
                 text=form_data['text'],
                 group=form_data['group'],
             ).exists()
-        ) 
+        )

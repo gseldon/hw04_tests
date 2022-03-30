@@ -1,4 +1,3 @@
-# deals/tests/test_views.py
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django import forms
@@ -96,7 +95,8 @@ class TaskPagesTests(TestCase):
         self.assertEqual(context, expect_post)
 
     def test_group_posts_context(self):
-        """В контексте group_posts верный список постов
+        """
+        В контексте group_posts верный список постов
         отфильтрованных по группе.
         """
         slug = self.group01.slug
@@ -121,7 +121,8 @@ class TaskPagesTests(TestCase):
             reverse('posts:profile', kwargs={'username': username})
         )
         context = list(response.context['page_obj'].object_list)
-        paginator = Paginator(Post.objects.filter(author=user).order_by('-pub_date'), POSTS_COUNT)
+        paginator = Paginator(Post.objects.filter(author=user).order_by(
+            '-pub_date'), POSTS_COUNT)
         expect_post = list(paginator.get_page(1).object_list)
         self.assertEqual(context, expect_post)
 
@@ -194,11 +195,11 @@ class TaskPagesTests(TestCase):
                     group=self.group01).order_by('-pub_date')[0]
                 posts = response.context['page_obj'].object_list
                 self.assertTrue(post in posts)
-    
+
     def test_group02_has_no_post_group01(self):
         """Поста первой группы, нет в информации второй группы."""
         response = self.authorized_client.get(
-            reverse('posts:group_post', kwargs={'slug': self.group02.slug})    
+            reverse('posts:group_post', kwargs={'slug': self.group02.slug})
         )
         post = Post.objects.filter(
             group=self.group01).order_by('-pub_date')[0]
