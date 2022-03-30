@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Последние обновления на сайте{% endblock %}
+{% block content %}
+  <body>
+    <main> 
+      <div class="container py-5">     
+        <h1>Последние обновления на сайте</h1>
+          {% for post in page_obj %}
+            <article class="card-body">
+              <ul>
+                <li>
+                  Автор: {{ post.author.get_full_name }}
+                </li>
+                <li>
+                  Дата публикации: {{ post.pub_date|date:"d E Y" }}
+                </li>
+              </ul>
+              <p>{{ post.text }}</p>
+              {% if user.is_authenticated %}
+                <a href={% url 'posts:post_edit' post.id %} class="btn btn-primary">Редактировать пост</a>
+              {% endif %}
+              {% if post.group %}
+                <a href={% url 'posts:group_post' post.group.slug %} class="btn btn-primary">Bсе записи группы</a>
+              {% endif %}
+              {% if not forloop.last %}<hr>{% endif %}
+            </article>
+          {% endfor %}
+          {% include 'posts/includes/paginator.html' %}
+      </div>
+    </main>      
+  </body>
+{% endblock %}
