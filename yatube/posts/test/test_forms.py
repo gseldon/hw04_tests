@@ -48,7 +48,7 @@ class PostURLTests(TestCase):
         )
         # Проверим, что пост создался, через увеличение
         # количества постов
-        self.assertEqual(Post.objects.count(), post_count+1)
+        self.assertEqual(Post.objects.count(), post_count + 1)
         # Проверим, что пост создался корректно
         self.assertTrue(
             Post.objects.filter(
