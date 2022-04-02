@@ -1,5 +1,7 @@
+from http import HTTPStatus
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
+from django.urls import reverse
 
 from posts.models import Group, Post
 
@@ -19,21 +21,20 @@ class StatusAuthURLTests(TestCase):
         cls.group = Group.objects.create(
             title='test_group',
             slug='test_slug',
-            description='Group description'
+            description='Group description',
         )
 
-        cls.guest_urls = [
-            '/',
-            f'/posts/{cls.post.pk}/',
-            f'/profile/{cls.user.username}/',
-            f'/group/{cls.group.slug}/',
+        cls.guest_urls = (
+            reverse('posts:index'),
+            reverse('posts:post_detail', kwargs={'post_id': cls.post.pk}),
+            reverse('posts:profile', kwargs={'username': cls.user}),
+            reverse('posts:group_post', kwargs={'slug': cls.group.slug}),
+        )
 
-        ]
-
-        cls.auth_urls = [
-            '/create/',
-            f'/posts/{cls.post.pk}/edit/',
-        ]
+        cls.auth_urls = (
+            reverse('posts:post_create'),
+            reverse('posts:post_edit', kwargs={'post_id': cls.post.pk}),
+        )
 
     def setUp(self):
         # Подготовка неавторизованного клиента
@@ -47,19 +48,19 @@ class StatusAuthURLTests(TestCase):
         for urls in StatusAuthURLTests.guest_urls:
             with self.subTest():
                 response = self.guest_client.get(urls)
-                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_deny_url_for_guest_client(self):
         """Страницы не доступны гостю."""
         for urls in StatusAuthURLTests.auth_urls:
             with self.subTest():
                 response = self.guest_client.get(urls)
-                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.status_code, HTTPStatus.FOUND)
 
     def test_unexsisting_page_url(self):
-        """Страница /unexsisting_page/ отдает 404."""
+        """Страница /unexsisting_page/ отдает 404 (NOT_FOUND)."""
         response = self.guest_client.get('/unexsisting_page/')
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_url_for_authorized_client(self):
         """
@@ -69,7 +70,7 @@ class StatusAuthURLTests(TestCase):
         for urls in StatusAuthURLTests.auth_urls:
             with self.subTest():
                 response = self.authorized_client.get(urls)
-                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""

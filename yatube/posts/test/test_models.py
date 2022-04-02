@@ -18,7 +18,7 @@ class PostModelTest(TestCase):
         )
         cls.post = Post.objects.create(
             author=cls.user,
-            text='Тестовая пост',
+            text='Заголовок на 23 символа',
         )
 
     def test_models_have_correct_object_names(self):
@@ -29,8 +29,13 @@ class PostModelTest(TestCase):
         expected_object_name_post = post.text[:15]
         expected_object_name_group = group.title
 
-        self.assertEqual(expected_object_name_post, str(post))
-        self.assertEqual(expected_object_name_group, str(group))
+        field_verboses = {
+            str(post): expected_object_name_post,
+            str(group): expected_object_name_group,
+        }
+        for field, expected_value in field_verboses.items():
+            with self.subTest(field=field):
+                self.assertEqual(expected_value, field)
 
     def test_models_post_verbose_name(self):
         """Проверяем, verbose_name у полей модели."""
@@ -43,7 +48,8 @@ class PostModelTest(TestCase):
         for field, expected_value in field_verboses.items():
             with self.subTest(field=field):
                 self.assertEqual(
-                    post._meta.get_field(field).verbose_name, expected_value)
+                    post._meta.get_field(field).verbose_name, expected_value
+                )
 
     def test_models_post_help_field(self):
         """Проверяем help_text в модели Post."""
@@ -57,4 +63,5 @@ class PostModelTest(TestCase):
         for field, expected_value in field_help_text.items():
             with self.subTest(field=field):
                 self.assertEqual(
-                    post._meta.get_field(field).help_text, expected_value)
+                    post._meta.get_field(field).help_text, expected_value
+                )

@@ -22,13 +22,13 @@ class TaskPagesTests(TestCase):
         cls.group01 = Group.objects.create(
             title='test_group',
             slug='test_slug',
-            description='Group description'
+            description='Group description',
         )
 
         cls.group02 = Group.objects.create(
             title='test_group02',
             slug='test_slug02',
-            description='Group description02'
+            description='Group description02',
         )
         # Создадим первый пост для автора и группы group01
         cls.post = Post.objects.create(
@@ -37,29 +37,28 @@ class TaskPagesTests(TestCase):
             text='Тестовый пост 1',
         )
         # Создадим еще 12 постов для автора и группы group01
-        # Нумирацию сохраняем
-        for i in range(2, POSTS_COUNT_MAX + 1):
-            Post.objects.create(
+        cls.posts = (
+            Post(
                 author=cls.user,
                 group=cls.group01,
                 text=f'Текст поста {i}',
-            )
+            ) for i in range(1, POSTS_COUNT_MAX)
+        )
+        Post.objects.bulk_create(cls.posts)
 
-        cls.reverse_test_paginator = [
+        cls.reverse_test_paginator = (
             reverse('posts:index'),
             reverse('posts:group_post', kwargs={'slug': cls.group01.slug}),
-            reverse('posts:profile', kwargs={'username': cls.user})
-        ]
+            reverse('posts:profile', kwargs={'username': cls.user}),
+        )
 
     def setUp(self):
         # Подготовка неавторизованного клиента
         self.guest_client = Client()
-        # Подготовка авторизованного клиента
-        # авторизация от автора тестовых постов
+        # Авторизация от автора тестовых постов
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
-    # Проверяем используемые шаблоны
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
         # Собираем в словарь пары "reverse(name): имя_html_шаблона"
@@ -89,8 +88,9 @@ class TaskPagesTests(TestCase):
         """В контексте index верный список постов."""
         response = self.authorized_client.get(reverse('posts:index'))
         context = response.context['page_obj'].object_list
-        paginator = Paginator(Post.objects.order_by(
-            '-pub_date'), POSTS_COUNT)
+        paginator = Paginator(
+            Post.objects.order_by('-pub_date'), POSTS_COUNT
+        )
         expect_post = list(paginator.get_page(1).object_list)
         self.assertEqual(context, expect_post)
 
@@ -105,8 +105,9 @@ class TaskPagesTests(TestCase):
             reverse('posts:group_post', kwargs={'slug': slug})
         )
         context = list(response.context['page_obj'].object_list)
-        paginator = Paginator(Post.objects.filter(group=group).order_by(
-            '-pub_date'), POSTS_COUNT)
+        paginator = Paginator(
+            Post.objects.filter(group=group).order_by('-pub_date'), POSTS_COUNT
+        )
         expect_post = list(paginator.get_page(1).object_list)
         self.assertEqual(context, expect_post)
 
@@ -121,30 +122,31 @@ class TaskPagesTests(TestCase):
             reverse('posts:profile', kwargs={'username': username})
         )
         context = list(response.context['page_obj'].object_list)
-        paginator = Paginator(Post.objects.filter(author=user).order_by(
-            '-pub_date'), POSTS_COUNT)
+        paginator = Paginator(
+            Post.objects.filter(author=user).order_by('-pub_date'), POSTS_COUNT
+        )
         expect_post = list(paginator.get_page(1).object_list)
         self.assertEqual(context, expect_post)
 
     def test_post_detail_context(self):
-        """Один пост, отфильтрованный по id, на странице post_detail."""
-        # Укажем id созданного тестовго поста и проверим, что он отобразиться
-        # на странице информации о посте
+        """
+        Один пост, отфильтрованный по id, на странице post_detail.
+        Укажем id созданного тестового поста и проверим, что он отобразится
+        на странице информации о посте
+        """
         post_id = self.post.pk
         response = self.authorized_client.get(
             reverse('posts:post_detail', kwargs={'post_id': post_id})
         )
-        # Получим id поста из переданного контекста с ответа страницы
         context = response.context['post'].id
         expect_post = self.post.id
         self.assertEqual(context, expect_post)
 
     def test_post_edit_page_context(self):
         """Контекст post_edit верный."""
-        response = self.authorized_client.get(reverse(
-            'posts:post_edit',
-            kwargs={'post_id': self.post.id}
-        ))
+        response = self.authorized_client.get(
+            reverse('posts:post_edit', kwargs={'post_id': self.post.id})
+        )
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
@@ -169,7 +171,7 @@ class TaskPagesTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_first_page_contains_ten_records(self):
-        """Проверка: количество постов на первой странице равно 10."""
+        """Количество постов на первой странице равно 10."""
         for reverse_name in self.reverse_test_paginator:
             with self.subTest():
                 response = self.client.get(reverse_name)
@@ -177,14 +179,15 @@ class TaskPagesTests(TestCase):
                 self.assertEqual(posts_count_context, POSTS_COUNT)
 
     def test_second_page_contains_three_records(self):
-        """Проверка: на второй странице должно быть три поста."""
+        """На второй странице должно быть три поста."""
         for reverse_name in self.reverse_test_paginator:
             with self.subTest():
-                response = self.client.get(reverse_name + '?page=2')
+                response = self.client.get(reverse_name, {'page': '2'})
                 posts_count_context = len(response.context['page_obj'])
                 self.assertEqual(
                     posts_count_context,
-                    POSTS_COUNT_MAX - POSTS_COUNT)
+                    POSTS_COUNT_MAX - POSTS_COUNT
+                )
 
     def test_post_with_group_show_on_template(self):
         """Пост с группой есть на главной странице, группы и профиля."""
@@ -192,16 +195,19 @@ class TaskPagesTests(TestCase):
             with self.subTest():
                 response = self.authorized_client.get(reverse_name)
                 post = Post.objects.filter(
-                    group=self.group01).order_by('-pub_date')[0]
+                    group=self.group01
+                ).order_by('-pub_date')[0]
                 posts = response.context['page_obj'].object_list
                 self.assertTrue(post in posts)
 
     def test_group02_has_no_post_group01(self):
-        """Поста первой группы, нет в информации второй группы."""
+        """
+        На странице второй группы нет постов первой группы.
+        Так как постов для второй группы не создается в фикстурах,
+        то context должен выдать пустой object_list.
+        """
         response = self.authorized_client.get(
             reverse('posts:group_post', kwargs={'slug': self.group02.slug})
         )
-        post = Post.objects.filter(
-            group=self.group01).order_by('-pub_date')[0]
-        posts = response.context['page_obj'].object_list
-        self.assertFalse(post in posts)
+        count_posts_group02 = len(response.context['page_obj'].object_list)
+        self.assertEqual(count_posts_group02, 0)
