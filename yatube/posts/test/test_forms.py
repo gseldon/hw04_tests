@@ -31,80 +31,76 @@ class PostURLTests(TestCase):
         """
         Подготовка тестового веб клиента
         guest_client - гостевой
-        authorized_client - авторизация от user.
+        authorized_author - авторизация от user
+        authorized_not_author - авторизация от автора без постов.
         """
         self.guest_client = Client()
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user01)
+        self.authorized_author = Client()
+        self.authorized_author.force_login(self.user01)
+        self.authorized_not_author = Client()
+        self.authorized_not_author.force_login(self.user02)
 
     def test_create_post_form(self):
-        """Проверка создания формы."""
+        """
+        Проверка создания формы.
+        id последнего созданного поста ищем через дату 'pub_date' с учетом,
+        что сортировка в модели может измениться.
+        """
         post_count = Post.objects.count()
         form_data = {
             'text': 'Проверочный пост',
             'group': self.group.id,
         }
-        response = self.authorized_client.post(
+        response = self.authorized_author.post(
             reverse('posts:post_create'),
             data=form_data,
             follow=True,
         )
-        post_last_id = post_count + 1
-
-        # Проверим, что после создания формы происходит
-        # перенаправление на страницу автора
+        last_post = Post.objects.latest('pub_date')
         self.assertRedirects(response, reverse(
             ('posts:profile'), kwargs={'username': self.user01})
         )
-        self.assertEqual(Post.objects.count(), post_last_id)
-        # Проверим, что последний созданный пост корректный
-        self.assertTrue(
-            Post.objects.filter(
-                id=post_last_id,
-                text=form_data['text'],
-                group=form_data['group'],
-            ).exists()
-        )
+        # Проверим, что пост создался в базе.
+        self.assertEqual(Post.objects.count(), post_count + 1)
+        # Проверим, что последний созданный пост корректный.
+        self.assertEqual(last_post.text, form_data['text'])
+        self.assertEqual(last_post.group.id, form_data['group'])
 
-    def test_edit_post(self):
-        """
-        Проверка на редактирование поста.
-        Только автор может править пост.
-        """
+    def test_not_author_can_edit_post(self):
+        """Проверка, что другой автор не может править чужой пост."""
         # В тестовой базе всего один пост от user01
-        post_id = 1
+        first_post_id = Post.objects.order_by('pub_date').first().id
         form_data = {
             'text': 'Отредактированный пост',
             'group': self.group.id,
         }
-        reverse_edit = reverse('posts:post_edit', kwargs={'post_id': post_id})
-        # Авторизуемся не под автором первого поста
-        # и попробуем его отредактировать
-        self.authorized_client.force_login(self.user02)
-        self.authorized_client.post(
+        reverse_edit = reverse(
+            'posts:post_edit', kwargs={'post_id': first_post_id}
+        )
+        self.authorized_not_author.post(
             reverse_edit,
             data=form_data,
             follow=True,
         )
-        self.assertFalse(
-            Post.objects.filter(
-                id=post_id,
-                text=form_data['text'],
-                group=form_data['group'],
-            ).exists()
+        edit_post = Post.objects.order_by('pub_date').first()
+        # Проверим, изменение text не произошло
+        self.assertNotEquals(edit_post.text, form_data['text'])
+
+    def test_author_can_edit_post(self):
+        """Проверка, что только автор может править пост."""
+        first_post_id = Post.objects.order_by('pub_date').first().id
+        form_data = {
+            'text': 'Отредактированный пост',
+            'group': self.group.id,
+        }
+        reverse_edit = reverse(
+            'posts:post_edit', kwargs={'post_id': first_post_id}
         )
-        # Авторизуемся под автором первого поста
-        # и попробуем его отредактировать
-        self.authorized_client.force_login(self.user01)
-        self.authorized_client.post(
+        self.authorized_author.post(
             reverse_edit,
             data=form_data,
             follow=True,
         )
-        self.assertTrue(
-            Post.objects.filter(
-                id=post_id,
-                text=form_data['text'],
-                group=form_data['group'],
-            ).exists()
-        )
+        edit_post = Post.objects.order_by('pub_date').first()
+        # Проверим, изменение text произошло
+        self.assertEquals(edit_post.text, form_data['text'])
